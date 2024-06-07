@@ -9,14 +9,16 @@ CELL_SIZE = 24
 MIN_SIZE = 70
 ROAD_WIDTH = 5
 EDGE_WIDTH = 10  # Lebar garis tepi putih
+DASH_LENGTH = 5  # Panjang setiap dash
+GAP_LENGTH = 5   # Panjang setiap gap
 
 # Warna
 GREEN = (0, 128, 0)
 LIGHT_GRAY = (192, 192, 192)
 WHITE = (255, 255, 255)
 
-# Kelas Node
-class Node:
+# Kelas Jalan
+class Jalan:
     def __init__(self, x, y, width, height, level):
         self.x = x
         self.y = y
@@ -44,8 +46,8 @@ class Node:
             if orientation == 'vertical' and self.width > MIN_SIZE * 2:
                 split_x = self.x + random.randint(MIN_SIZE, self.width - MIN_SIZE)
 
-                left_child = Node(self.x, self.y, split_x - self.x, self.height, self.level + 1)
-                right_child = Node(split_x, self.y, self.width - (split_x - self.x), self.height, self.level + 1)
+                left_child = Jalan(self.x, self.y, split_x - self.x, self.height, self.level + 1)
+                right_child = Jalan(split_x, self.y, self.width - (split_x - self.x), self.height, self.level + 1)
 
                 # Menentukan titik belokan vertikal
                 turn_x = random.randint(self.x, split_x)
@@ -58,8 +60,8 @@ class Node:
             elif orientation == 'horizontal' and self.height > MIN_SIZE * 2:
                 split_y = self.y + random.randint(MIN_SIZE, self.height - MIN_SIZE)
 
-                top_child = Node(self.x, self.y, self.width, split_y - self.y, self.level + 1)
-                bottom_child = Node(self.x, split_y, self.width, self.height - (split_y - self.y), self.level + 1)
+                top_child = Jalan(self.x, self.y, self.width, split_y - self.y, self.level + 1)
+                bottom_child = Jalan(self.x, split_y, self.width, self.height - (split_y - self.y), self.level + 1)
 
                 # Menentukan titik belokan horizontal
                 turn_x = self.x + random.randint(0, self.width)
@@ -72,6 +74,23 @@ class Node:
 
             for child in self.children:
                 child.split()
+
+    def draw_dashed_line(self, surface, color, start_pos, end_pos, width=1, dash_length=10, gap_length=5):
+        x1, y1 = start_pos
+        x2, y2 = end_pos
+
+        if x1 == x2:  # vertical dashed line
+            y_coords = range(y1, y2, dash_length + gap_length)
+            for y in y_coords:
+                if y + dash_length > y2:
+                    dash_length = y2 - y
+                pygame.draw.line(surface, color, (x1, y), (x2, y + dash_length), width)
+        elif y1 == y2:  # horizontal dashed line
+            x_coords = range(x1, x2, dash_length + gap_length)
+            for x in x_coords:
+                if x + dash_length > x2:
+                    dash_length = x2 - x
+                pygame.draw.line(surface, color, (x, y1), (x + dash_length, y2), width)
 
     def draw_rect(self, surface):
         # Menggambar latar belakang hijau untuk setiap node
@@ -103,6 +122,38 @@ class Node:
         pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y - self.road_width, self.width, self.road_width))  # Tepi atas
         pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y + self.height, self.width, self.road_width))  # Tepi bawah
 
+        # Menggambar petak kecil putih di depan jalan abu-abu
+        self.draw_dashed_line(surface, WHITE, (self.x + self.road_width, self.y), (self.x + self.width - self.road_width, self.y), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Atas
+        self.draw_dashed_line(surface, WHITE, (self.x + self.road_width, self.y + self.height), (self.x + self.width - self.road_width, self.y + self.height), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Bawah
+        self.draw_dashed_line(surface, WHITE, (self.x, self.y + self.road_width), (self.x, self.y + self.height - self.road_width), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Kiri
+        self.draw_dashed_line(surface, WHITE, (self.x + self.width, self.y + self.road_width), (self.x + self.width, self.y + self.height - self.road_width), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Kanan
+
+    def draw_home(self, surface, home_image):
+        # Pastikan gambar rumah berada di dalam node hijau dengan margin dari jalan
+        home_width, home_height = home_image.get_size()
+        max_x = self.x + self.width - self.road_width - home_width
+        min_x = self.x + self.road_width
+        max_y = self.y + self.height - self.road_width - home_height
+        min_y = self.y + self.road_width
+
+        if max_x > min_x and max_y > min_y:
+            home_x = random.randint(min_x, max_x)
+            home_y = random.randint(min_y, max_y)
+            surface.blit(home_image, (home_x, home_y))
+
+    def draw_building(self, surface, building_image):
+        # Pastikan gambar gedung berada di dalam node hijau dengan margin dari jalan
+        building_width, building_height = building_image.get_size()
+        max_x = self.x + self.width - self.road_width - building_width
+        min_x = self.x + self.road_width
+        max_y = self.y + self.height - self.road_width - building_height
+        min_y = self.y + self.road_width
+
+        if max_x > min_x and max_y > min_y:
+            building_x = random.randint(min_x, max_x)
+            building_y = random.randint(min_y, max_y)
+            surface.blit(building_image, (building_x, building_y))
+
 # Kelas BSPTree
 class BSPTree:
     def __init__(self, root_node):
@@ -124,8 +175,8 @@ class BSPTree:
         return tree_leaves
 
 # Fungsi Utama untuk Membuat Peta
-def create_map(surface):
-    root = Node(CANVAS_MARGIN, CANVAS_MARGIN, CANVAS_WIDTH - 2 * CANVAS_MARGIN, CANVAS_HEIGHT - 2 * CANVAS_MARGIN, 0)
+def create_map(surface, home_image):
+    root = Jalan(CANVAS_MARGIN, CANVAS_MARGIN, CANVAS_WIDTH - 2 * CANVAS_MARGIN, CANVAS_HEIGHT - 2 * CANVAS_MARGIN, 0)
     root.split()
 
     tree = BSPTree(root)
@@ -133,38 +184,22 @@ def create_map(surface):
 
     for leaf in tree_leaves:
         leaf.draw_rect(surface)
+        leaf.draw_home(surface, home_image)  # Gambar rumah di setiap node
 
     # Menggambar garis tepi putih di tepi canvas
     pygame.draw.rect(surface, WHITE, (0, 0, CANVAS_WIDTH, CANVAS_HEIGHT), EDGE_WIDTH)
 
-# Fungsi untuk menggambar rumah
-def draw_home(surface, image, position):
-    surface.blit(image, position)
-
 # Inisialisasi Pygame
 pygame.init()
 screen = pygame.display.set_mode((CANVAS_WIDTH, CANVAS_HEIGHT))
-pygame.display.set_caption("BSP Map")
+pygame.display.set_caption("IKN Map")
 
-## Muat gambar rumah
-#home_image = pygame.image.load('objek/home.jpg')
-#home_image = pygame.transform.scale(home_image, (CELL_SIZE * 2, CELL_SIZE * 2))  # Mengubah ukuran gambar sesuai kebutuhan
+# Muat gambar rumah
+home_image = pygame.image.load('rumah.png')
+home_image = pygame.transform.scale(home_image, (CELL_SIZE * 2, CELL_SIZE * 2))  # Mengubah ukuran gambar sesuai kebutuhan
 
 # Membuat peta
-create_map(screen)
-
-# Menggambar rumah di titik merah sesuai gambar yang Anda unggah
-#home_positions = [
-#    (150, 150),  # Koordinat titik merah pertama
-#    (300, 150),  # Koordinat titik merah kedua
-#    (450, 150),  # Koordinat titik merah ketiga
-#    (150, 450),  # Koordinat titik merah keempat
-#    (450, 450)   # Koordinat titik merah kelima
-#]
-
-# Menggambar rumah di titik-titik yang telah ditentukan
-#for position in home_positions:
-#    draw_home(screen, home_image, position)
+create_map(screen, home_image)
 
 # Main loop
 running = True
