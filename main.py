@@ -2,10 +2,14 @@ import pygame
 import random
 
 # Konfigurasi ukuran kanvas dan ukuran cell
-CANVAS_WIDTH = 600
-CANVAS_HEIGHT = 600
-CANVAS_MARGIN = 15  
+NUM_CELLS_X = 150
+NUM_CELLS_Y = 150
 CELL_SIZE = 24
+CANVAS_WIDTH = NUM_CELLS_X * CELL_SIZE
+CANVAS_HEIGHT = NUM_CELLS_Y * CELL_SIZE
+VIEWPORT_WIDTH = 600
+VIEWPORT_HEIGHT = 600
+CANVAS_MARGIN = 0  
 MIN_SIZE = 70
 ROAD_WIDTH = 5
 EDGE_WIDTH = 10  # Lebar garis tepi putih
@@ -191,23 +195,44 @@ def create_map(surface, home_image):
 
 # Inisialisasi Pygame
 pygame.init()
-screen = pygame.display.set_mode((CANVAS_WIDTH, CANVAS_HEIGHT))
+screen = pygame.display.set_mode((VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
 pygame.display.set_caption("IKN Map")
 
 # Muat gambar rumah
-home_image = pygame.image.load('rumah.png')
-home_image = pygame.transform.scale(home_image, (CELL_SIZE * 2, CELL_SIZE * 2))  # Mengubah ukuran gambar sesuai kebutuhan
+home_image = pygame.image.load('objek/b1.png')
+home_image = pygame.transform.scale(home_image, (CELL_SIZE * 10, CELL_SIZE * 5))  # Mengubah ukuran gambar sesuai kebutuhan
 
 # Membuat peta
-create_map(screen, home_image)
+map_surface = pygame.Surface((CANVAS_WIDTH, CANVAS_HEIGHT))
+create_map(map_surface, home_image)
 
 # Main loop
 running = True
+x_offset, y_offset = 0, 0
+scroll_speed = 2
+pressed_keys = set()  # Track pressed keys
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            pressed_keys.add(event.key)
+        elif event.type == pygame.KEYUP:
+            pressed_keys.discard(event.key)
 
+    # Update offsets based on pressed keys
+    if pygame.K_LEFT in pressed_keys:
+        x_offset = max(x_offset - scroll_speed, 0)
+    if pygame.K_RIGHT in pressed_keys:
+        x_offset = min(x_offset + scroll_speed, CANVAS_WIDTH - VIEWPORT_WIDTH)
+    if pygame.K_UP in pressed_keys:
+        y_offset = max(y_offset - scroll_speed, 0)
+    if pygame.K_DOWN in pressed_keys:
+        y_offset = min(y_offset + scroll_speed, CANVAS_HEIGHT - VIEWPORT_HEIGHT)
+
+    # Draw the viewport
+    screen.blit(map_surface, (0, 0), (x_offset, y_offset, VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
     pygame.display.flip()
 
 pygame.quit()
