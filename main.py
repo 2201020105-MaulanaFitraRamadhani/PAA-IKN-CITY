@@ -1,238 +1,206 @@
-import pygame
+import tkinter as tk
+from tkinter import Canvas, Scrollbar, Button
+from PIL import Image, ImageDraw, ImageTk
 import random
 
-# Konfigurasi ukuran kanvas dan ukuran cell
-NUM_CELLS_X = 150
-NUM_CELLS_Y = 150
-CELL_SIZE = 24
-CANVAS_WIDTH = NUM_CELLS_X * CELL_SIZE
-CANVAS_HEIGHT = NUM_CELLS_Y * CELL_SIZE
-VIEWPORT_WIDTH = 600
-VIEWPORT_HEIGHT = 600
-CANVAS_MARGIN = 0  
-MIN_SIZE = 70
-ROAD_WIDTH = 5
-EDGE_WIDTH = 10  # Lebar garis tepi putih
-DASH_LENGTH = 5  # Panjang setiap dash
-GAP_LENGTH = 5   # Panjang setiap gap
+# Constants
+CANVAS_WIDTH = 1500  # Adjusted for 150x150 cells (each cell is 10x10 pixels)
+CANVAS_HEIGHT = 1500
+MIN_SIZE = 150
 
-# Warna
-GREEN = (0, 128, 0)
-LIGHT_GRAY = (192, 192, 192)
-WHITE = (255, 255, 255)
+#def create_placeholder_buildings():
+#    # Big building (10x5)
+#    big_building = Image.new("RGB", (100, 50), "blue")
+#    big_building.save("big_building.png")
+#
+#    # Medium building (5x3)
+#    medium_building = Image.new("RGB", (50, 30), "red")
+#    medium_building.save("medium_building.png")
+#
+#    # Small building (2x2)
+#    small_building = Image.new("RGB", (20, 20), "yellow")
+#    small_building.save("small_building.png")
+#
+#    # House (1x2)
+#    house = Image.new("RGB", (10, 20), "green")
+#    house.save("house.png")
+#
+#create_placeholder_buildings()
 
-# Kelas Jalan
+# Jalan Class (BSP Node)
 class Jalan:
-    def __init__(self, x, y, width, height, level):
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.cell_size = CELL_SIZE
-        self.road_width = ROAD_WIDTH
-        self.edge_width = EDGE_WIDTH
-        self.level = level
-        self.children = []
-
-        # Menghitung koordinat sudut dalam
-        self.top_left = (self.x + self.road_width, self.y + self.road_width)
-        self.top_right = (self.x + self.width - self.road_width, self.y + self.road_width)
-        self.bottom_right = (self.x + self.width - self.road_width, self.y + self.height - self.road_width)
-        self.bottom_left = (self.x + self.road_width, self.y + self.road_width)
-
-        # Menentukan titik untuk belokan
-        self.turn_point = None
+        self.left = None
+        self.right = None
 
     def split(self):
-        if self.width > MIN_SIZE * 2 or self.height > MIN_SIZE * 2:
-            orientation = random.choice(['vertical', 'horizontal'])
-
-            if orientation == 'vertical' and self.width > MIN_SIZE * 2:
-                split_x = self.x + random.randint(MIN_SIZE, self.width - MIN_SIZE)
-
-                left_child = Jalan(self.x, self.y, split_x - self.x, self.height, self.level + 1)
-                right_child = Jalan(split_x, self.y, self.width - (split_x - self.x), self.height, self.level + 1)
-
-                # Menentukan titik belokan vertikal
-                turn_x = random.randint(self.x, split_x)
-                turn_y = self.y + random.randint(0, self.height)
-                self.turn_point = (turn_x, turn_y)
-
-                left_child.bottom_right = right_child.bottom_left = self.turn_point
-
-                self.children.extend([left_child, right_child])
-            elif orientation == 'horizontal' and self.height > MIN_SIZE * 2:
-                split_y = self.y + random.randint(MIN_SIZE, self.height - MIN_SIZE)
-
-                top_child = Jalan(self.x, self.y, self.width, split_y - self.y, self.level + 1)
-                bottom_child = Jalan(self.x, split_y, self.width, self.height - (split_y - self.y), self.level + 1)
-
-                # Menentukan titik belokan horizontal
-                turn_x = self.x + random.randint(0, self.width)
-                turn_y = random.randint(self.y, split_y)
-                self.turn_point = (turn_x, turn_y)
-
-                top_child.bottom_right = bottom_child.top_left = self.turn_point
-
-                self.children.extend([top_child, bottom_child])
-
-            for child in self.children:
-                child.split()
-
-    def draw_dashed_line(self, surface, color, start_pos, end_pos, width=1, dash_length=10, gap_length=5):
-        x1, y1 = start_pos
-        x2, y2 = end_pos
-
-        if x1 == x2:  # vertical dashed line
-            y_coords = range(y1, y2, dash_length + gap_length)
-            for y in y_coords:
-                if y + dash_length > y2:
-                    dash_length = y2 - y
-                pygame.draw.line(surface, color, (x1, y), (x2, y + dash_length), width)
-        elif y1 == y2:  # horizontal dashed line
-            x_coords = range(x1, x2, dash_length + gap_length)
-            for x in x_coords:
-                if x + dash_length > x2:
-                    dash_length = x2 - x
-                pygame.draw.line(surface, color, (x, y1), (x + dash_length, y2), width)
-
-    def draw_rect(self, surface):
-        # Menggambar latar belakang hijau untuk setiap node
-        pygame.draw.rect(surface, GREEN, (self.x, self.y, self.width, self.height))
-
-        # Menggambar garis tepi putih di sekitar node
-        pygame.draw.rect(surface, WHITE, (self.x, self.y, self.width, self.height), self.edge_width)
-
-        # Menggambar jalan di sekitar node
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y, self.width, self.road_width))  # Atas
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y + self.height - self.road_width, self.width, self.road_width))  # Bawah
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y, self.road_width, self.height))  # Kiri
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x + self.width - self.road_width, self.y, self.road_width, self.height))  # Kanan
-
-        # Menggambar titik belokan
-        if self.turn_point:
-            pygame.draw.circle(surface, LIGHT_GRAY, self.turn_point, 3)
-
-        # Menggambar tikungan di sepanjang garis
-        if self.width > MIN_SIZE * 2 and self.height > MIN_SIZE * 2:
-            pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y, self.road_width, self.height))  # Vertikal kiri
-            pygame.draw.rect(surface, LIGHT_GRAY, (self.x + self.width - self.road_width, self.y, self.road_width, self.height))  # Vertikal kanan
-            pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y, self.width, self.road_width))  # Horizontal atas
-            pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y + self.height - self.road_width, self.width, self.road_width))  # Horizontal bawah
-
-        # Menggambar jalan di tepi-tepi petak kanvas
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x - self.road_width, self.y, self.road_width, self.height))  # Tepi kiri
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x + self.width, self.y, self.road_width, self.height))  # Tepi kanan
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y - self.road_width, self.width, self.road_width))  # Tepi atas
-        pygame.draw.rect(surface, LIGHT_GRAY, (self.x, self.y + self.height, self.width, self.road_width))  # Tepi bawah
-
-        # Menggambar petak kecil putih di depan jalan abu-abu
-        self.draw_dashed_line(surface, WHITE, (self.x + self.road_width, self.y), (self.x + self.width - self.road_width, self.y), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Atas
-        self.draw_dashed_line(surface, WHITE, (self.x + self.road_width, self.y + self.height), (self.x + self.width - self.road_width, self.y + self.height), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Bawah
-        self.draw_dashed_line(surface, WHITE, (self.x, self.y + self.road_width), (self.x, self.y + self.height - self.road_width), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Kiri
-        self.draw_dashed_line(surface, WHITE, (self.x + self.width, self.y + self.road_width), (self.x + self.width, self.y + self.height - self.road_width), width=1, dash_length=DASH_LENGTH, gap_length=GAP_LENGTH)  # Kanan
-
-    def draw_home(self, surface, home_image):
-        # Pastikan gambar rumah berada di dalam node hijau dengan margin dari jalan
-        home_width, home_height = home_image.get_size()
-        max_x = self.x + self.width - self.road_width - home_width
-        min_x = self.x + self.road_width
-        max_y = self.y + self.height - self.road_width - home_height
-        min_y = self.y + self.road_width
-
-        if max_x > min_x and max_y > min_y:
-            home_x = random.randint(min_x, max_x)
-            home_y = random.randint(min_y, max_y)
-            surface.blit(home_image, (home_x, home_y))
-
-    def draw_building(self, surface, building_image):
-        # Pastikan gambar gedung berada di dalam node hijau dengan margin dari jalan
-        building_width, building_height = building_image.get_size()
-        max_x = self.x + self.width - self.road_width - building_width
-        min_x = self.x + self.road_width
-        max_y = self.y + self.height - self.road_width - building_height
-        min_y = self.y + self.road_width
-
-        if max_x > min_x and max_y > min_y:
-            building_x = random.randint(min_x, max_x)
-            building_y = random.randint(min_y, max_y)
-            surface.blit(building_image, (building_x, building_y))
-
-# Kelas BSPTree
-class BSPTree:
-    def __init__(self, root_node):
-        self.root = root_node
-
-    def expand_node(self):
-        self.root.split()
-
-    def get_leaves(self):
-        tree_leaves = []
-        traversal_order = [self.root]
-
-        while traversal_order:
-            temp = traversal_order.pop(0)
-            if temp.children:
-                traversal_order.extend(temp.children)
+        if self.width > 2 * MIN_SIZE or self.height > 2 * MIN_SIZE:
+            if self.width > self.height:
+                split_line = random.randint(MIN_SIZE, self.width - MIN_SIZE)
+                self.left = Jalan(self.x, self.y, split_line, self.height)
+                self.right = Jalan(self.x + split_line, self.y, self.width - split_line, self.height)
             else:
-                tree_leaves.append(temp)
-        return tree_leaves
+                split_line = random.randint(MIN_SIZE, self.height - MIN_SIZE)
+                self.left = Jalan(self.x, self.y, self.width, split_line)
+                self.right = Jalan(self.x, self.y + split_line, self.width, self.height - split_line)
+            self.left.split()
+            self.right.split()
 
-# Fungsi Utama untuk Membuat Peta
-def create_map(surface, home_image):
-    root = Jalan(CANVAS_MARGIN, CANVAS_MARGIN, CANVAS_WIDTH - 2 * CANVAS_MARGIN, CANVAS_HEIGHT - 2 * CANVAS_MARGIN, 0)
+    def draw_rect(self, draw, image):
+        green_area = (self.x + 10, self.y + 10, self.x + self.width - 10, self.y + self.height - 10)
+        draw.rectangle(green_area, fill="green", outline="white", width=2)  # White stroke
+        self.draw_roads(draw)
+        self.place_buildings(draw, image, green_area)
+
+    def draw_roads(self, draw):
+        road_width = 10
+        dash_distance = 0  # Distance from edge of road to dashed line
+
+        # Top road
+        draw.rectangle((self.x, self.y, self.x + self.width, self.y + road_width), fill="gray")
+        self.draw_dashed_line(draw, (self.x, self.y + dash_distance), (self.x + self.width, self.y + dash_distance))
+
+        # Bottom road
+        draw.rectangle((self.x, self.y + self.height - road_width, self.x + self.width, self.y + self.height), fill="gray")
+        self.draw_dashed_line(draw, (self.x, self.y + self.height - dash_distance), (self.x + self.width, self.y + self.height - dash_distance))
+
+        # Left road
+        draw.rectangle((self.x, self.y, self.x + road_width, self.y + self.height), fill="gray")
+        self.draw_dashed_line(draw, (self.x + dash_distance, self.y), (self.x + dash_distance, self.y + self.height))
+
+        # Right road
+        draw.rectangle((self.x + self.width - road_width, self.y, self.x + self.width, self.y + self.height), fill="gray")
+        self.draw_dashed_line(draw, (self.x + self.width - dash_distance, self.y), (self.x + self.width - dash_distance, self.y + self.height))
+
+    def draw_dashed_line(self, draw, start, end):
+        dash_length = 10
+        gap_length = 10
+        x1, y1 = start
+        x2, y2 = end
+        total_length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        dashes = int(total_length // (dash_length + gap_length))
+        for i in range(dashes):
+            start_dash = (
+                x1 + (x2 - x1) * (i * (dash_length + gap_length)) / total_length,
+                y1 + (y2 - y1) * (i * (dash_length + gap_length)) / total_length,
+            )
+            end_dash = (
+                x1 + (x2 - x1) * ((i * (dash_length + gap_length) + dash_length)) / total_length,
+                y1 + (y2 - y1) * ((i * (dash_length + gap_length) + dash_length)) / total_length,
+            )
+            draw.line([start_dash, end_dash], fill="white", width=2)
+
+    def place_buildings(self, draw, image, green_area):
+        building_images = {
+            "big_building": Image.open("objek/b1.png"),
+            "medium_building": Image.open("objek/b2.png"),
+            "small_building": Image.open("objek/b3.png"),
+            "house": Image.open("objek/b4.png")
+        }
+        
+        placements = {
+            "big_building": (100, 50),
+            "medium_building": (50, 30),
+            "small_building": (20, 20),
+            "house": (10, 20)
+        }
+        
+        placed_rectangles = []
+
+        def can_place(new_rect):
+            min_gap = 20  # Minimum gap between buildings
+            for rect in placed_rectangles:
+                if (
+                    new_rect[0] < rect[2] + min_gap and new_rect[2] > rect[0] - min_gap and
+                    new_rect[1] < rect[3] + min_gap and new_rect[3] > rect[1] - min_gap
+                ):
+                    return False
+            return True
+
+        def try_place(building_key, count):
+            width, height = placements[building_key]
+            margin = 10
+            for _ in range(count):
+                for _ in range(100):  # Try 100 times to place the building
+                    x = random.randint(green_area[0] + margin, green_area[2] - width - margin)
+                    y = random.randint(green_area[1] + margin, green_area[3] - height - margin)
+                    new_rect = (x, y, x + width, y + height)
+                    if can_place(new_rect):
+                        placed_rectangles.append(new_rect)
+                        image.paste(building_images[building_key], (x, y))
+                        break
+
+        # Place buildings with the specified ranges
+        try_place("big_building", random.randint(1, 1))
+        try_place("medium_building", random.randint(4, 4))
+        try_place("small_building", random.randint(10, 20))
+        try_place("house", random.randint(10, 20))
+
+def create_map():
+    # Create a blank canvas
+    image = Image.new("RGB", (CANVAS_WIDTH, CANVAS_HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    # Create the root node and split it
+    root = Jalan(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     root.split()
 
-    tree = BSPTree(root)
-    tree_leaves = tree.get_leaves()
+    # Collect all leaf nodes
+    nodes = [root]
+    leaves = []
+    while nodes:
+        node = nodes.pop()
+        if node.left and node.right:
+            nodes.append(node.left)
+            nodes.append(node.right)
+        else:
+            leaves.append(node)
 
-    for leaf in tree_leaves:
-        leaf.draw_rect(surface)
-        leaf.draw_home(surface, home_image)  # Gambar rumah di setiap node
+    # Draw the map sections
+    for leaf in leaves:
+        leaf.draw_rect(draw, image)
 
-    # Menggambar garis tepi putih di tepi canvas
-    pygame.draw.rect(surface, WHITE, (0, 0, CANVAS_WIDTH, CANVAS_HEIGHT), EDGE_WIDTH)
+    return image
 
-# Inisialisasi Pygame
-pygame.init()
-screen = pygame.display.set_mode((VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-pygame.display.set_caption("IKN Map")
+def update_map(canvas, image):
+    map_image = ImageTk.PhotoImage(image)
+    canvas.create_image(0, 0, anchor="nw", image=map_image)
+    canvas.image = map_image  # Keep reference to avoid garbage collection
 
-# Muat gambar rumah
-home_image = pygame.image.load('objek/b1.png')
-home_image = pygame.transform.scale(home_image, (CELL_SIZE * 10, CELL_SIZE * 5))  # Mengubah ukuran gambar sesuai kebutuhan
+def redesign_map(canvas):
+    image = create_map()
+    update_map(canvas, image)
 
-# Membuat peta
-map_surface = pygame.Surface((CANVAS_WIDTH, CANVAS_HEIGHT))
-create_map(map_surface, home_image)
+def main():
+    root = tk.Tk()
+    root.title("City Map with BSP")
 
-# Main loop
-running = True
-x_offset, y_offset = 0, 0
-scroll_speed = 2
-pressed_keys = set()  # Track pressed keys
+    canvas_frame = tk.Frame(root)
+    canvas_frame.pack(fill=tk.BOTH, expand=True)
 
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN:
-            pressed_keys.add(event.key)
-        elif event.type == pygame.KEYUP:
-            pressed_keys.discard(event.key)
+    hbar = Scrollbar(canvas_frame, orient=tk.HORIZONTAL)
+    hbar.pack(side=tk.BOTTOM, fill=tk.X)
+    vbar = Scrollbar(canvas_frame, orient=tk.VERTICAL)
+    vbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    # Update offsets based on pressed keys
-    if pygame.K_LEFT in pressed_keys:
-        x_offset = max(x_offset - scroll_speed, 0)
-    if pygame.K_RIGHT in pressed_keys:
-        x_offset = min(x_offset + scroll_speed, CANVAS_WIDTH - VIEWPORT_WIDTH)
-    if pygame.K_UP in pressed_keys:
-        y_offset = max(y_offset - scroll_speed, 0)
-    if pygame.K_DOWN in pressed_keys:
-        y_offset = min(y_offset + scroll_speed, CANVAS_HEIGHT - VIEWPORT_HEIGHT)
+    canvas = Canvas(canvas_frame, width=800, height=600, scrollregion=(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT))
+    canvas.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+    hbar.config(command=canvas.xview)
+    vbar.config(command=canvas.yview)
+    canvas.config(xscrollcommand=hbar.set, yscrollcommand=vbar.set)
 
-    # Draw the viewport
-    screen.blit(map_surface, (0, 0), (x_offset, y_offset, VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-    pygame.display.flip()
+    redesign_button = Button(root, text="Redesign Map", command=lambda: redesign_map(canvas))
+    redesign_button.pack()
 
-pygame.quit()
+    # Initial map design
+    image = create_map()
+    update_map(canvas, image)
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
