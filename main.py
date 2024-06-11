@@ -4,30 +4,10 @@ from PIL import Image, ImageDraw, ImageTk
 import random
 
 # Constants
-CANVAS_WIDTH = 1510  # Adjusted for 150x150 cells (each cell is 10x10 pixels)
-CANVAS_HEIGHT = 1510
+CANVAS_WIDTH = 1500  # Adjusted for 150x150 cells (each cell is 10x10 pixels)
+CANVAS_HEIGHT = 1500
 MIN_SIZE = 150
 VIEWPORT_MARGIN = -10  # Margin around the viewport
-
-
-#def create_placeholder_buildings():
-#    # Big building (10x5)
-#    big_building = Image.new("RGB", (100, 50), "blue")
-#    big_building.save("big_building.png")
-#
-#    # Medium building (5x3)
-#    medium_building = Image.new("RGB", (50, 30), "red")
-#    medium_building.save("medium_building.png")
-#
-#    # Small building (2x2)
-#    small_building = Image.new("RGB", (20, 20), "yellow")
-#    small_building.save("small_building.png")
-#
-#    # House (1x2)
-#    house = Image.new("RGB", (10, 20), "green")
-#    house.save("house.png")
-#
-#create_placeholder_buildings()
 
 # Jalan Class (BSP Node)
 class Jalan:
