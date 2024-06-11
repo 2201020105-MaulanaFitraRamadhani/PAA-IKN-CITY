@@ -4,9 +4,11 @@ from PIL import Image, ImageDraw, ImageTk
 import random
 
 # Constants
-CANVAS_WIDTH = 1500  # Adjusted for 150x150 cells (each cell is 10x10 pixels)
-CANVAS_HEIGHT = 1500
+CANVAS_WIDTH = 1510  # Adjusted for 150x150 cells (each cell is 10x10 pixels)
+CANVAS_HEIGHT = 1510
 MIN_SIZE = 150
+VIEWPORT_MARGIN = -10  # Margin around the viewport
+
 
 #def create_placeholder_buildings():
 #    # Big building (10x5)
@@ -174,6 +176,10 @@ def update_map(canvas, image):
 def redesign_map(canvas):
     image = create_map()
     update_map(canvas, image)
+    # Scroll to the margin position
+    canvas.xview_moveto(VIEWPORT_MARGIN / (CANVAS_WIDTH + 2 * VIEWPORT_MARGIN))
+    canvas.yview_moveto(VIEWPORT_MARGIN / (CANVAS_HEIGHT + 2 * VIEWPORT_MARGIN))
+
 
 def main():
     root = tk.Tk()
@@ -187,7 +193,7 @@ def main():
     vbar = Scrollbar(canvas_frame, orient=tk.VERTICAL)
     vbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    canvas = Canvas(canvas_frame, width=800, height=600, scrollregion=(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT))
+    canvas = Canvas(canvas_frame, width=800, height=600, scrollregion=(-VIEWPORT_MARGIN, -VIEWPORT_MARGIN, CANVAS_WIDTH + VIEWPORT_MARGIN, CANVAS_HEIGHT + VIEWPORT_MARGIN))
     canvas.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
     hbar.config(command=canvas.xview)
     vbar.config(command=canvas.yview)
@@ -199,6 +205,10 @@ def main():
     # Initial map design
     image = create_map()
     update_map(canvas, image)
+    # Scroll to the margin position
+    canvas.xview_moveto(VIEWPORT_MARGIN / (CANVAS_WIDTH + 2 * VIEWPORT_MARGIN))
+    canvas.yview_moveto(VIEWPORT_MARGIN / (CANVAS_HEIGHT + 2 * VIEWPORT_MARGIN))
+
 
     root.mainloop()
 
